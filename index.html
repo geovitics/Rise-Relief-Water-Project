@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Water Projects Map</title>
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.1/papaparse.min.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.7.2/mapbox-gl-geocoder.css" rel="stylesheet" />
+  <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.7.2/mapbox-gl-geocoder.min.js"></script>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      font-family: Arial, sans-serif;
+    }
+    #map {
+      width: 100%;
+      height: 93vh;
+    }
+    /* Header styling */
+    .header {
+      text-align: center;
+      padding: 10px;
+      background-color: rgba(255, 255, 255, 0.8);
+      color: black;
+      font-size: 24px;
+      font-weight: bold;
+      border-bottom: 2px solid #ccc;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .popup-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        justify-content: center;
+        max-width: 300px;
+      }
+      
+      .popup-content h3 {
+        margin: 8px 0;
+        font-size: 16px;
+      }
+      
+      .popup-content img {
+        width: 100%;
+        max-width: 200px;
+        height: auto;
+        border-radius: 5px;
+        margin-bottom: 10px;
+      }
+      
+      .popup-content p {
+        margin: 10px 0;
+        text-align: justify;
+        line-height: 1.6;
+      }
+      
+      .popup-content a {
+        display: inline-block;
+        margin-top: 10px;
+        color: #007bff;
+        text-decoration: none;
+        font-weight: bold;
+      }
+      
+      .popup-content a:hover {
+        text-decoration: underline;
+      }
+      
+    /* Home button */
+  .mapboxgl-ctrl-group {
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  #home-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+  }
+
+  #home-button:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+
+  /* Mobile responsiveness */
+  @media screen and (max-width: 768px) {
+    #map {
+      height: 95vh; /* Adjust height for smaller screens */
+    }
+
+    .header {
+      font-size: 20px; /* Slightly smaller font for mobile */
+      padding: 8px;
+    }
+
+    .popup-content img {
+      max-width: 150px; /* Smaller images for mobile */
+    }
+
+    .popup-content h3 {
+      font-size: 16px; /* Adjust font size for readability */
+    }
+
+    .popup-content p {
+      font-size: 14px; /* Slightly smaller text for descriptions */
+    }
+
+    .popup-content a {
+      font-size: 14px; /* Adjust link font size */
+    }
+
+    #home-button {
+      width: 40px;
+      height: 40px;
+    }
+  }
+
+  /* Ultra-small devices (e.g., older smartphones) */
+  @media screen and (max-width: 480px) {
+    .header {
+      font-size: 18px;
+      padding: 6px;
+    }
+
+    #map {
+      height: 95vh;
+    }
+
+    .popup-content {
+      max-width: 250px;
+    }
+
+    .popup-content p {
+      font-size: 12px;
+    }
+
+    #home-button svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+  </style>
+</head>
+<body>
+  <!-- Header Section -->
+  <div class="header">Completed Water Wells</div>
+  
+  <div id="map"></div>
+
+  <script>
+    // Your Mapbox access token
+    mapboxgl.accessToken = 'pk.eyJ1IjoiZ2Vvdml0aWNzIiwiYSI6ImNsb3g2NzVlejFiN3oyamxsZGF2YjFzaGgifQ.zt6ujUh5wgHNbra_Zh1x7A';
+
+    // Initialize Mapbox map
+    const map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/basic-v9',
+      center: [2.288121, 9.131442], // Initial center coordinates
+      zoom: 6,
+      pitch: 0, // Reduce pitch for faster rendering
+      bearing: 0, // Remove rotation calculations
+      antialias: false, // Disable smoothing for better performance
+      interactive: true, // Ensure interactivity is enabled efficiently
+    });
+    
+    //map.addControl(new mapboxgl.NavigationControl());
+    // Local Geocoding Data
+    //const csvFilePath = 'Completed_Water_Projects__Titles_Rise_Relief.csv';
+
+    const csvFilePath = "https://docs.google.com/spreadsheets/d/1kphtRfjJ84Mhq-pU8ZT0WipDYq-Y3CdLOpMpF12kf48/gviz/tq?tqx=out:csv";
+
+  
+     // Variable to store the processed data
+     let localGeocodingData = [];
+
+     // Parse the CSV file
+     Papa.parse(csvFilePath, {
+       download: true,
+       header: true,
+       skipEmptyLines: true,
+       complete: function (result) {
+         const data = result.data;
+ 
+         // Process the data to the required format
+         localGeocodingData = data
+           .filter(row => row['GPS (Latitude)'] && row['GPS (Longitude)']) // Filter valid rows with coordinates
+           .map(row => ({
+             name: `${row['Gifted By']} (${row["Donor's Country"]}) - ${row['Project Location']} (${row['Project Country']})`,
+             coordinates: [
+               parseFloat(row['GPS (Longitude)']), // Longitude first
+               parseFloat(row['GPS (Latitude)'])   // Latitude second
+             ],
+           }));
+ 
+         //console.log('Formatted data:', localGeocodingData);
+       },
+       error: function (error) {
+         console.error('Error parsing CSV:', error);
+       }
+     });
+
+    // Create a function for local geocoding
+    function localGeocoder(query) {
+      const matches = localGeocodingData.filter((location) =>
+        location.name.toLowerCase().includes(query.toLowerCase())
+      );
+      return matches.map((match) => ({
+        center: match.coordinates,
+        geometry: {
+          type: 'Point',
+          coordinates: match.coordinates,
+        },
+        place_name: match.name,
+        text: match.name,
+        properties: {},
+        type: 'Feature',
+      }));
+    }
+
+    // Initialize Mapbox Geocoder
+    const geocoder = new MapboxGeocoder({
+        accessToken: mapboxgl.accessToken,
+        mapboxgl: mapboxgl,
+        localGeocoder: localGeocoder,
+        localGeocoderOnly: true,
+        marker: false // Disable default marker
+      });
+  
+      // Add the geocoder to the map
+      map.addControl(geocoder, 'top-right');
+  
+      // Add a marker when a result is found
+      geocoder.on('result', (event) => {
+        const { center } = event.result.geometry;
+  
+        new mapboxgl.Marker()
+          .setLngLat(center)
+          .addTo(map);
+  
+        map.flyTo({ center, zoom: 14 });
+      });
+
+    // Parse the CSV file and add markers
+    Papa.parse(csvFilePath, {
+      download: true,
+      header: true,
+      complete: function (result) {
+        //console.log(result.data);
+        const data = result.data;
+
+        data.forEach(item => {
+          const latitude = parseFloat(item['GPS (Latitude)']);
+          const longitude = parseFloat(item['GPS (Longitude)']);
+          const title = `Project ${item['Number']}: ${item['Title']}`;
+          const description = item['Description'];
+          let imageUrl = item['rise_relief_project_banner_image_link']?.trim() || 'https://placehold.co/200x150';
+          //console.log(imageUrl);
+
+          // Validate coordinates and create popup
+          if (!isNaN(latitude) && !isNaN(longitude)) {
+            const popupContent = `
+              <div class="popup-content">
+                <h3>${title}</h3>
+                <img src="${imageUrl}" alt="Banner for ${title}">
+                <p>${description}</p>
+                <a href="${item['rise_relief_project_page_link']}" target="_blank">Click here to see Project details</a>
+                <img src="https://i0.wp.com/riserelief.org/wp-content/uploads/2024/12/Rise-Relief_NEW-logo-PNG-2.png" alt="Rise Relief Logo">
+              </div>
+            `;
+
+            const popup = new mapboxgl.Popup({
+              offset: [0, 30], // Move popup slightly upward
+              anchor: "top",
+            }).setHTML(popupContent);
+            
+            // Create a custom marker element
+            const markerElement = document.createElement('div');
+            markerElement.style.fontSize = '15px';  // Adjust size as needed
+            markerElement.style.lineHeight = '1';
+            markerElement.style.textAlign = 'center';
+            markerElement.style.color = '#007bff'; // Set the color of the water drop
+            markerElement.innerHTML = '💧'; // Use the water drop emoji
+
+            // Create the marker
+            new mapboxgl.Marker({
+            element: markerElement // Use the custom element
+            })
+            .setLngLat([longitude, latitude])
+            .setPopup(popup) // Attach the popup
+            .addTo(map);
+            
+            markerElement.addEventListener('click', () => {
+              map.flyTo({
+                center: [longitude, latitude], 
+                zoom: 14, 
+                essential: true
+              });
+
+              // Delay opening popup slightly to allow smooth recentering
+          setTimeout(() => {
+            popup.setLngLat([longitude, latitude]);
+            popup.addTo(map);
+            
+            // Adjust map position to ensure popup is fully visible
+            const paddingTop = -200; // Extra space for popup visibility
+            map.easeTo({
+              center: [longitude, latitude],
+              offset: [0, paddingTop]
+            });
+          }, 700);
+          });
+        }
+        });
+      }
+    });
+
+        // Create a custom control for the Home button
+        class HomeButtonControl {
+        onAdd(map) {
+        this.map = map;
+        this.container = document.createElement('div');
+        this.container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
+        this.container.innerHTML = `
+          <button id="home-button" title="Go to Home" style="background-color: transparent; border: none; cursor: pointer;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="black">
+              <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+            </svg>
+          </button>
+        `;
+        this.container.style.display = 'flex';
+        this.container.style.alignItems = 'center';
+        this.container.style.justifyContent = 'center';
+        this.container.style.padding = '1px';
+
+        // Add event listener for click
+        this.container.addEventListener('click', () => {
+          this.map.flyTo({
+            center: [2.288121, 9.131442], // Initial center coordinates
+            zoom: 6,                     // Initial zoom level
+            essential: true              // Smooth fly transition
+          });
+        });
+
+        return this.container;
+      }
+
+      onRemove() {
+        this.container.parentNode.removeChild(this.container);
+        this.map = undefined;
+      }
+    }
+
+    // Add the HomeButtonControl to the map
+    const homeButton = new HomeButtonControl();
+    map.addControl(homeButton, 'bottom-right'); // Position it in the top-left corner
+
+  </script>
+</body>
+</html>
